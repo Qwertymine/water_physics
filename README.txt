@@ -1,9 +1,8 @@
 water_physics Modpack
 =======================
-Simple modpack which adds adds some physics to water
+Simple modpack which adds adds some physics to liquids
 
-by Qwertymine3, based of of the boat mod by jordan4ibanez, which was
-based off the boats mod by PilzAdam.
+by Qwertymine3, based of mods by jordan4ibanez and PilzAdam.
 
 License of source code:
 -----------------------
