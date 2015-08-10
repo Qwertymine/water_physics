@@ -3,6 +3,7 @@ minetest.register_entity(":__builtin:item", {
 	initial_properties = {
 		hp_max = 1,
 		physical = true,
+		collide_with_objects = false,
 		collisionbox = {-0.17,-0.17,-0.17, 0.17,0.17,0.17},
 		visual = "wielditem",
 		visual_size = {x=0.5, y=0.5},
@@ -93,6 +94,13 @@ minetest.register_entity(":__builtin:item", {
 			return
 		end
 		
+		self.object:setacceleration({x=0, y=-10, z=0})
+		
+		local vel = self.object:getvelocity()
+		if vel.y == 0 then
+			self.object:setvelocity({x=0,y=0,z=0})
+		end
+		
 		if minetest.registered_nodes[name].liquidtype == "flowing" then
 			get_flowing_dir = function(self)
 				local pos = self.object:getpos()
@@ -104,38 +112,32 @@ minetest.register_entity(":__builtin:item", {
 			if vec then
 				local v = self.object:getvelocity()
 				self.object:setvelocity({x=vec.x,y=v.y,z=vec.z})
-				self.object:setacceleration({x=0, y=-10, z=0})
-				self.physical_state = true
+
 				self.object:set_properties({
-					physical = true
+					physical = true,
+					collide_with_objects = false,
 				})
 				return
 			end
 			self.last_pos = mod_pos
 		end
-		
+		--[[
 		p.y = p.y - 0.3
 		local nn = minetest.env:get_node(p).name
 		-- If node is not registered or node is walkably solid
 		if not minetest.registered_nodes[nn] or minetest.registered_nodes[nn].walkable then
-			if self.physical_state then
-				self.object:setvelocity({x=0,y=0,z=0})
-				self.object:setacceleration({x=0, y=0, z=0})
-				self.physical_state = false
-				self.object:set_properties({
-					physical = false
-				})
-			end
-		else
-			if not self.physical_state then
+			if not self.grounded then
 				self.object:setvelocity({x=0,y=0,z=0})
 				self.object:setacceleration({x=0, y=-10, z=0})
-				self.physical_state = true
-				self.object:set_properties({
-					physical = true
-				})
+				self.grounded = true
+			end
+		else
+			if self.grounded then
+				self.object:setacceleration({x=0, y=-10, z=0})
+				self.grounded = false
 			end
 		end
+		--]]
 	end,
 
 	on_punch = function(self, hitter)
