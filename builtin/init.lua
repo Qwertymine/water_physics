@@ -1,156 +1,95 @@
---sum of direction vectors must match an array index
-minetest.register_entity(":__builtin:item", {
-	initial_properties = {
-		hp_max = 1,
-		physical = true,
-		collide_with_objects = false,
-		collisionbox = {-0.17,-0.17,-0.17, 0.17,0.17,0.17},
-		visual = "wielditem",
-		visual_size = {x=0.5, y=0.5},
-		textures = {""},
-		spritediv = {x=1, y=1},
-		initial_sprite_basepos = {x=0, y=0},
-		is_visible = false,
-		timer = 0,
-	},
-	
-	itemstring = '',
-	physical_state = true,
-
-	set_item = function(self, itemstring)
-		self.itemstring = itemstring
-		local stack = ItemStack(itemstring)
-		local itemtable = stack:to_table()
-		local itemname = nil
-		if itemtable then
-			itemname = stack:to_table().name
+if not core.get_gravity then
+	local gravity,grav_updating = 10
+	function core.get_gravity()
+		if not grav_updating then
+			gravity = tonumber(core.setting_get("movement_gravity")) or gravity
+			grav_updating = true
+			core.after(50, function()
+				grav_updating = false
+			end)
 		end
-		local item_texture = nil
-		local item_type = ""
-		if minetest.registered_items[itemname] then
-			item_texture = minetest.registered_items[itemname].inventory_image
-			item_type = minetest.registered_items[itemname].type
+		return gravity
+	end
+	local set_setting = core.setting_set
+	function core.setting_set(name, v, ...)
+		if name == "gravity" then
+			name = "movement_gravity"
+			gravity = tonumber(v) or gravity
 		end
-		prop = {
-			is_visible = true,
-			visual = "wielditem",
-			textures = {itemname},
-			visual_size = {x=0.20,y=0.20},
-			automatic_rotate = math.pi * 0.25
-		}
-		self.object:set_properties(prop)
-	end,
+		return set_setting(name, v, ...)
+	end
+	local get_setting = core.setting_get
+	function core.setting_get(name, ...)
+		if name == "gravity" then
+			name = "movement_gravity"
+		end
+		return get_setting(name, ...)
+	end
+end
 
-	get_staticdata = function(self)
-		--return self.itemstring
-		return minetest.serialize({
-			itemstring = self.itemstring,
-			always_collect = self.always_collect,
-			timer = self.timer,
+local item_entity = minetest.registered_entities["__builtin:item"]
+local old_on_step = item_entity.on_step or function()end
+
+item_entity.on_step = function(self, dtime)
+	old_on_step(self, dtime)
+
+	local p = self.object:getpos()
+
+	local name = minetest.get_node(p).name
+	if name == "default:lava_flowing"
+	or name == "default:lava_source"
+	or name == "fire:basic_flame" then
+		minetest.sound_play("builtin_item_lava", {pos=p})
+		minetest.add_particlespawner({
+			amount = 3,
+			time = 0.1,
+			minpos = {x=p.x, y=p.y, z=p.z},
+			maxpos = {x=p.x, y=p.y+0.2, z=p.z},
+			minacc = {x=-0.5,y=5,z=-0.5},
+			maxacc = {x=0.5,y=5,z=0.5},
+			minexptime = 0.1,
+			minsize = 2,
+			maxsize = 4,
+			texture = "smoke_puff.png"
 		})
-	end,
-
-	on_activate = function(self, staticdata, dtime_s)
-		if string.sub(staticdata, 1, string.len("return")) == "return" then
-			local data = minetest.deserialize(staticdata)
-			if data and type(data) == "table" then
-				self.itemstring = data.itemstring
-				self.always_collect = data.always_collect
-				self.timer = data.timer
-				if not self.timer then
-					self.timer = 0
-				end
-				self.timer = self.timer+dtime_s
-			end
-		else
-			self.itemstring = staticdata
-		end
-		self.object:set_armor_groups({immortal=1})
-		self.object:setvelocity({x=0, y=2, z=0})
-		self.object:setacceleration({x=0, y=-10, z=0})
-		self:set_item(self.itemstring)
-	end,
-	
-	on_step = function(self, dtime)
-		local time = tonumber(minetest.setting_get("remove_items"))
-		if not time then
-			time = 300
-		end
-		if not self.timer then
-			self.timer = 0
-		end
-		self.timer = self.timer + dtime
-		if time ~= 0 and (self.timer > time) then
-			self.object:remove()
-		end
-		
-		local p = self.object:getpos()
-		
-		local name = minetest.env:get_node(p).name
-		if name == "default:lava_flowing" or name == "default:lava_source" or
-		name == "fire:basic_flame" then
-			minetest.sound_play("builtin_item_lava", {pos=self.object:getpos()})
-			self.timer = self.timer + 150 * dtime
-			return
-		end
-		
-		self.object:setacceleration({x=0, y=-10, z=0})
-		
-		local vel = self.object:getvelocity()
-		if vel.y == 0 then
-			self.object:setvelocity({x=0,y=0,z=0})
-		end
-		
-		if minetest.registered_nodes[name].liquidtype == "flowing" then
-			get_flowing_dir = function(self)
-				local pos = self.object:getpos()
-				local node = minetest.env:get_node(pos)
-				return quick_flow(pos,node)
-			end
-			
-			local vec = get_flowing_dir(self)
-			if vec then
-				local v = self.object:getvelocity()
-				self.object:setvelocity({x=vec.x,y=v.y,z=vec.z})
-
-				self.object:set_properties({
-					physical = true,
-					collide_with_objects = false,
-				})
-				return
-			end
-			self.last_pos = mod_pos
-		end
-		--[[
-		p.y = p.y - 0.3
-		local nn = minetest.env:get_node(p).name
-		-- If node is not registered or node is walkably solid
-		if not minetest.registered_nodes[nn] or minetest.registered_nodes[nn].walkable then
-			if not self.grounded then
-				self.object:setvelocity({x=0,y=0,z=0})
-				self.object:setacceleration({x=0, y=-10, z=0})
-				self.grounded = true
-			end
-		else
-			if self.grounded then
-				self.object:setacceleration({x=0, y=-10, z=0})
-				self.grounded = false
-			end
-		end
-		--]]
-	end,
-
-	on_punch = function(self, hitter)
-		if self.itemstring ~= '' then
-			local left = hitter:get_inventory():add_item("main", self.itemstring)
-			if not left:is_empty() then
-				self.itemstring = left:to_string()
-				return
-			end
-		end
+		minetest.add_particlespawner ({
+			amount = 1, time = 0.4,
+			minpos = {x = p.x, y= p.y + 0.25, z= p.z},
+			maxpos = {x = p.x, y= p.y + 0.5, z= p.z},
+			minexptime = 0.2, maxexptime = 0.4,
+			minsize = 4, maxsize = 6,
+			collisiondetection = false,
+			vertical = false,
+			texture = "fire_basic_flame.png",
+		})
 		self.object:remove()
-	end,
-})
+		return
+	end
+
+	local tmp = minetest.registered_nodes[name]
+	if tmp
+	and tmp.liquidtype == "flowing" then
+		get_flowing_dir = function(self)
+			local pos = self.object:getpos()
+			local node = minetest.env:get_node(pos)
+			return quick_flow(pos,node)
+		end
+			
+		local vec = get_flowing_dir(self)
+		if vec then
+			local v = self.object:getvelocity()
+			self.object:setvelocity({x=vec.x,y=v.y,z=vec.z})
+			
+			self.object:setacceleration({x=0, y=-core.get_gravity(), z=0})
+			self.physical_state = true
+			self.object:set_properties({
+				physical = true
+			})
+		end
+	end
+end
+
+minetest.register_entity(":__builtin:item", item_entity)
 
 if minetest.setting_get("log_mods") then
 	minetest.log("action", "builtin_item loaded")
