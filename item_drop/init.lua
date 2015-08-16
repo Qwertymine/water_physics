@@ -8,7 +8,7 @@ minetest.register_globalstep(function(dtime)
 			local inv = player:get_inventory()
 			
 			for _,object in ipairs(minetest.env:get_objects_inside_radius(pos, 1)) do
-				if not object:is_player() and object:get_luaentity() and object:get_luaentity().name == "__builtin:item" and (object:get_luaentity().timer and object:get_luaentity().timer >= 1)  then
+				if not object:is_player() and object:get_luaentity() and object:get_luaentity().name == "__builtin:item" and (object:get_luaentity().age and object:get_luaentity().age >= 1)  then
 					if inv and inv:room_for_item("main", ItemStack(object:get_luaentity().itemstring)) then
 						inv:add_item("main", ItemStack(object:get_luaentity().itemstring))
 						if object:get_luaentity().itemstring ~= "" then
@@ -55,6 +55,7 @@ if not minetest_mode then
 							z = -z
 						end
 						obj:setvelocity({x=1/x, y=obj:getvelocity().y, z=1/z})
+						obj:get_luaentity().age = 1
 						
 						-- FIXME this doesnt work for deactiveted objects
 						if minetest.setting_get("remove_items") and tonumber(minetest.setting_get("remove_items")) then
