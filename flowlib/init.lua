@@ -1,3 +1,5 @@
+flowlib = {}
+
 --sum of direction vectors must match an array index
 local function to_unit_vector(dir_vector)
 	--(sum,root)
@@ -7,22 +9,30 @@ local function to_unit_vector(dir_vector)
 	return {x=dir_vector.x*inv_roots[sum],y=dir_vector.y,z=dir_vector.z*inv_roots[sum]}
 end
 
-function is_touching(realpos,nodepos,radius)
+local is_touching = function(realpos,nodepos,radius)
 	local boarder = 0.5 - radius
 	return (math.abs(realpos - nodepos) > (boarder))
 end
 
-function is_water(pos)
+flowlib.is_touching = is_touching
+
+local is_water = function(pos)
 	return (minetest.get_item_group(minetest.get_node({x=pos.x,y=pos.y,z=pos.z}).name, "water") ~= 0)
 end
 
-function is_liquid(pos)
+flowlib.is_water = is_water
+
+local is_liquid = function(pos)
 	return (minetest.get_item_group(minetest.get_node({x=pos.x,y=pos.y,z=pos.z}).name, "liquid") ~= 0)
 end
 
-function node_is_liquid(node)
+flowlib.is_liquid = is_liquid
+
+local node_is_liquid = function(node)
 	return (minetest.get_item_group(node.name, "liquid") ~= 0)
 end
+
+flowlib.node_is_liquid = node_is_liquid
 
 --This code is more efficient
 local function quick_flow_logic(node,pos_testing,direction)
@@ -59,7 +69,7 @@ local function quick_flow_logic(node,pos_testing,direction)
 	return 0
 end
 
-function quick_flow(pos,node)
+local quick_flow = function(pos,node)
 	local x = 0
 	local z = 0
 	
@@ -75,11 +85,13 @@ function quick_flow(pos,node)
 	return to_unit_vector({x=x,y=0,z=z})
 end
 
+flowlib.quick_flow = quick_flow
+
 
 	--if not in water but touching, move centre to touching block
 	--x has higher precedence than z
 	--if pos changes with x, it affects z
-function move_centre(pos,realpos,node,radius)
+local move_centre = function(pos,realpos,node,radius)
 	if is_touching(realpos.x,pos.x,radius) then
 		if is_liquid({x=pos.x-1,y=pos.y,z=pos.z}) then
 			node = minetest.get_node({x=pos.x-1,y=pos.y,z=pos.z})
@@ -100,3 +112,5 @@ function move_centre(pos,realpos,node,radius)
 	end
 	return pos,node
 end
+
+flowlib.move_centre = move_centre
