@@ -22,6 +22,25 @@ end
 
 flowlib.is_water = is_water
 
+local node_is_water = function(node)
+	return (minetest.get_item_group(node.name, "water") ~= 0)
+end
+
+flowlib.node_is_water = node_is_water
+
+local is_lava = function(pos)
+	return (minetest.get_item_group(minetest.get_node({x=pos.x,y=pos.y,z=pos.z}).name, "lava") ~= 0)
+end
+
+flowlib.is_lava = is_lava
+
+local node_is_lava = function(node)
+	return (minetest.get_item_group(node.name, "lava") ~= 0)
+end
+
+flowlib.node_is_lava = node_is_lava
+
+
 local is_liquid = function(pos)
 	return (minetest.get_item_group(minetest.get_node({x=pos.x,y=pos.y,z=pos.z}).name, "liquid") ~= 0)
 end
