@@ -72,7 +72,7 @@ item_entity.on_step = function(self, dtime)
 		get_flowing_dir = function(self)
 			local pos = self.object:getpos()
 			local node = minetest.env:get_node(pos)
-			return quick_flow(pos,node)
+			return flowlib.quick_flow(pos,node)
 		end
 			
 		local vec = get_flowing_dir(self)
